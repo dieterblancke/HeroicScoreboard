@@ -41,13 +41,16 @@ public class ScoreboardIterable
         {
             return "";
         }
-        if ( idx + 1 >= lines.size() )
+        if ( idx >= lines.size() )
         {
             idx = 0;
         }
         stayTime = interval;
 
-        return PlaceHolder.formatPlaceHolders( player, Utils.format( player, lines.get( idx++ ) ), this );
+        final String result = PlaceHolder.formatPlaceHolders( player, Utils.format( player, lines.get( idx ) ), this );
+        idx += 1;
+
+        return result;
     }
 
     public boolean hasData( final String key )

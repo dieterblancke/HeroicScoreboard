@@ -14,7 +14,7 @@ mode: 'SCOREBOARD_MAX_48'
 # Default is 50, which is the equivalent of one tick in minecraft.
 # Lowest possible is 1 ms, if you go for 0 or lower, the scoreboard will be seen as a static scoreboard!
 # Do note, the interval in the title & line frames are multiplications of this interval
-# For example, if you enter interval 25 here, and interval 10 at title, the title will update very 250 seconds (25 * 10)
+# For example, if you enter interval 25 here, and interval 10 at title, the title will update very 250 milliseconds (25 * 10)
 interval: 50
 title:
   # This interval (in MILLISECONDS) will be multiplied by the scoreboard interval.

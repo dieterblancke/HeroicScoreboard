@@ -41,7 +41,7 @@ public class ScoreboardIterable
         {
             return "";
         }
-        if ( idx >= lines.size() )
+        if ( idx + 1 >= lines.size() )
         {
             idx = 0;
         }

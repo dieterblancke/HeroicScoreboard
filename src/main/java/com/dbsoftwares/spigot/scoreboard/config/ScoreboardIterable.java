@@ -1,11 +1,14 @@
 package com.dbsoftwares.spigot.scoreboard.config;
 
+import com.dbsoftwares.spigot.scoreboard.placeholder.PlaceHolder;
 import com.dbsoftwares.spigot.scoreboard.utils.Utils;
+import com.google.common.collect.Maps;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Player;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 @RequiredArgsConstructor
@@ -14,6 +17,7 @@ public class ScoreboardIterable
 
     private final int interval;
     private final List<String> lines;
+    private final Map<String, Object> lineData = Maps.newHashMap();
 
     private int idx = 0;
     private int stayTime;
@@ -43,6 +47,25 @@ public class ScoreboardIterable
         }
         stayTime = interval;
 
-        return Utils.format( player, lines.get( idx++ ) );
+        final String result = PlaceHolder.formatPlaceHolders( player, Utils.format( player, lines.get( idx ) ), this );
+        idx += 1;
+
+        return result;
+    }
+
+    public boolean hasData( final String key )
+    {
+        return lineData.containsKey( key );
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T getData( final String key )
+    {
+        return (T) lineData.get( key );
+    }
+
+    public void setData( final String key, final Object value )
+    {
+        lineData.put( key, value );
     }
 }

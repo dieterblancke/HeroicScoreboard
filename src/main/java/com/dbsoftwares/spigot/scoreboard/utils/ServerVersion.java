@@ -2,7 +2,7 @@ package com.dbsoftwares.spigot.scoreboard.utils;
 
 public enum ServerVersion
 {
-    MINECRAFT_1_15( 12, "1_15_R1" ),
+    MINECRAFT_1_15( 12, "v1_15_R1" ),
     MINECRAFT_1_14( 11, "v1_14_R1" ),
     MINECRAFT_1_13_1( 10, "v1_13_R2" ),
     MINECRAFT_1_13( 9, "v1_13_R1" ),

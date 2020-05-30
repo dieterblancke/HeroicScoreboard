@@ -1,0 +1,42 @@
+# Defines whether this scoreboard is enabled or not.
+enabled: true
+# Permission that is required to see this scoreboard.
+permission: ''
+# Using this, you can add additional checks that might be required to see this scoreboard.
+# In this script, we are checking if the rank === 'owner' or 'admin' using a PlaceholderAPI placeholder
+# This script is made using JavaScript and uses Java's Nashorn Engine
+check_script: |-
+  var rank = '%vault_rank%'.toLowerCase();
+
+  if (rank === 'owner' || rank === 'admin')
+  {
+      result.set(true);
+  } else {
+      result.set(false);
+  }
+weight: 10
+# This will only impact servers that run a version older than 1.13
+# Possible modes are:
+# - SCOREBOARD_MAX_32 => this mode will allow for scoreboards UP TO 32 characters
+# - SCOREBOARD_MAX_48 => this mode will allow for scoreboards UP TO 48 characters, but can be buggy every other time when using fast animations
+mode: 'SCOREBOARD_MAX_48'
+# What should the MINIMUM interval of the scoreboard be (in MILLISECONDS)?
+# Default is 50, which is the equivalent of one tick in minecraft.
+# Lowest possible is 1 ms, if you go for 0 or lower, the scoreboard will be seen as a static scoreboard!
+# Do note, the interval in the title & line frames are multiplications of this interval
+# For example, if you enter interval 25 here, and interval 10 at title, the title will update very 250 milliseconds (25 * 10)
+interval: 50
+title:
+  # This interval (in MILLISECONDS) will be multiplied by the scoreboard interval.
+  # So if the scoreboard interval is 25, and this interval is 1, this frame will update every 25 milliseconds (40~ times a second)
+  interval: 1
+  # The frames of the title
+  frames:
+    # When using a scroller in the title in servers older than 1.13, the max width CANNOT GO OVER 32 (this would kick the client)
+    - '<scroller spaces="15" max-width="32">&4&lThank you for using HeroicScoreboard!</scroller>'
+lines:
+  # This interval (in MILLISECONDS) will be multiplied by the scoreboard interval.
+  # So if the scoreboard interval is 25, and this interval is 1, this frame will update every 25 milliseconds (40~ times a second)
+  - interval: -1
+    frames:
+      - '&7Check out our Website: &adbsoftwares.eu !!'

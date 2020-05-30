@@ -10,6 +10,7 @@ import com.dbsoftwares.spigot.scoreboard.packetwrappers.WrapperPlayServerScorebo
 import com.dbsoftwares.spigot.scoreboard.packetwrappers.WrapperPlayServerScoreboardTeam;
 import com.dbsoftwares.spigot.scoreboard.utils.PacketUtils;
 import com.dbsoftwares.spigot.scoreboard.utils.ServerVersion;
+import com.dbsoftwares.spigot.scoreboard.utils.Utils;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -29,7 +30,8 @@ public class Scoreboard
         if ( config.getBoolean( "async.enabled" ) && config.getBoolean( "async.thread-pool.enabled" ) )
         {
             THREAD_POOL = Executors.newFixedThreadPool( config.getInteger( "async.thread-pool.size" ) );
-        } else
+        }
+        else
         {
             THREAD_POOL = null;
         }
@@ -49,13 +51,10 @@ public class Scoreboard
     {
         this.player = player;
         this.configuration = scoreboardConfig.copy();
-        String scoreboardName = "HSB#" + player.getName();
-        if ( scoreboardName.length() > 16 )
-        {
-            scoreboardName = scoreboardName.substring( 0, 16 );
-        }
-        this.scoreboardName = scoreboardName;
-        this.executorService = THREAD_POOL == null ? Executors.newSingleThreadExecutor() : THREAD_POOL;
+        this.scoreboardName = Utils.optionalSubString( "HSB#" + player.getName(), 16 );
+        this.executorService = configuration.getInterval() > 0
+                ? (THREAD_POOL == null ? Executors.newSingleThreadExecutor() : THREAD_POOL)
+                : null;
     }
 
     public Player getPlayer()
@@ -65,7 +64,7 @@ public class Scoreboard
 
     private String getNextTitle()
     {
-        return configuration.getTitle().next( player );
+        return configuration.getTitle().next( this.player );
     }
 
     public void create()
@@ -95,21 +94,25 @@ public class Scoreboard
 
         HeroicScoreboard.getInstance().getScoreboards().add( this );
 
-        task = SCHEDULER.scheduleAtFixedRate(
-                () ->
-                {
-                    if ( HeroicScoreboard.getInstance().getConfiguration().getBoolean( "async.enabled" ) )
+        if ( configuration.getInterval() > 0 )
+        {
+            task = SCHEDULER.scheduleAtFixedRate(
+                    () ->
                     {
-                        executorService.execute( this::update );
-                    } else
-                    {
-                        Bukkit.getScheduler().runTask( HeroicScoreboard.getInstance(), this::update );
-                    }
-                },
-                50,
-                50,
-                TimeUnit.MILLISECONDS
-        );
+                        if ( HeroicScoreboard.getInstance().getConfiguration().getBoolean( "async.enabled" ) )
+                        {
+                            executorService.execute( this::update );
+                        }
+                        else
+                        {
+                            Bukkit.getScheduler().runTask( HeroicScoreboard.getInstance(), this::update );
+                        }
+                    },
+                    configuration.getInterval(),
+                    configuration.getInterval(),
+                    TimeUnit.MILLISECONDS
+            );
+        }
         created = true;
     }
 
@@ -134,7 +137,8 @@ public class Scoreboard
             );
 
             this.objective.sendPacket( player );
-        } else
+        }
+        else
         {
             configuration.getTitle().reduceStayTime();
         }
@@ -146,7 +150,8 @@ public class Scoreboard
             if ( line.canRun() )
             {
                 this.setLine( i, line.next( this.player ) );
-            } else
+            }
+            else
             {
                 line.reduceStayTime();
             }
@@ -159,9 +164,12 @@ public class Scoreboard
         {
             return;
         }
-        task.cancel( true );
+        if ( task != null )
+        {
+            task.cancel( true );
+        }
 
-        if ( THREAD_POOL == null )
+        if ( THREAD_POOL == null && executorService != null )
         {
             executorService.shutdown();
         }
@@ -185,23 +193,6 @@ public class Scoreboard
         created = false;
     }
 
-    private void sendLine( int line )
-    {
-        if ( line < 0 || line > 14 )
-        {
-            return;
-        }
-        final int score = ( 15 - line );
-        final VirtualTeam val = getOrCreateTeam( line );
-
-        for ( WrapperPlayServerScoreboardTeam packet : val.sendLine() )
-        {
-            packet.sendPacket( player );
-        }
-        sendScore( val.getCurrentPlayer(), score ).sendPacket( player );
-        val.reset();
-    }
-
     private void removeLine( int line )
     {
         final VirtualTeam team = getOrCreateTeam( line );
@@ -218,21 +209,46 @@ public class Scoreboard
 
     private WrapperPlayServerScoreboardScore removeLine( final String old )
     {
-        return PacketUtils.createScoreboardScorePacket( old, (byte) 1, this.scoreboardName, -1 );
+        return PacketUtils.createScoreboardScorePacket( old, (byte) 1, this.scoreboardName, 0 );
     }
 
     private void setLine( int line, String value )
     {
         final VirtualTeam team = getOrCreateTeam( line );
+        final String old = team.getCurrentPlayer();
+
         team.setValue( value );
+
+        if ( old != null && created && team.playerChanged && configuration.getMode() == ScoreboardMode.SCOREBOARD_MAX_48 )
+        {
+            removeLine( old ).sendPacket( player );
+        }
+
         sendLine( line );
+    }
+
+    private void sendLine( int line )
+    {
+        if ( line < 0 || line > 14 )
+        {
+            return;
+        }
+        final int score = (15 - line);
+        final VirtualTeam val = getOrCreateTeam( line );
+
+        for ( WrapperPlayServerScoreboardTeam packet : val.sendLine() )
+        {
+            packet.sendPacket( player );
+        }
+        sendScore( val.getCurrentPlayer(), score ).sendPacket( player );
+        val.reset();
     }
 
     private VirtualTeam getOrCreateTeam( int line )
     {
         if ( lines[line] == null )
         {
-            lines[line] = new VirtualTeam( line, ServerVersion.search(), "__fakeScore" + line );
+            lines[line] = new VirtualTeam( Utils.requiresOldScoreboard( player ), configuration.getMode(), line, ServerVersion.search(), "__fakeScore" + line );
         }
 
         return lines[line];

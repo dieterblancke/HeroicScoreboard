@@ -4,12 +4,16 @@ import co.aikar.commands.PaperCommandManager;
 import com.dbsoftwares.configuration.api.IConfiguration;
 import com.dbsoftwares.configuration.api.ISection;
 import com.dbsoftwares.spigot.scoreboard.board.Scoreboard;
+import com.dbsoftwares.spigot.scoreboard.board.ScoreboardMode;
 import com.dbsoftwares.spigot.scoreboard.commands.HeroicScoreboardCommand;
 import com.dbsoftwares.spigot.scoreboard.config.ScoreboardConfiguration;
 import com.dbsoftwares.spigot.scoreboard.config.ScoreboardLine;
 import com.dbsoftwares.spigot.scoreboard.config.ScoreboardTitle;
 import com.dbsoftwares.spigot.scoreboard.listeners.PlayerListener;
+import com.dbsoftwares.spigot.scoreboard.placeholder.PlaceHolder;
+import com.dbsoftwares.spigot.scoreboard.placeholder.ScrollerPlaceHolder;
 import com.dbsoftwares.spigot.scoreboard.utils.ScoreboardUtils;
+import com.dbsoftwares.spigot.scoreboard.utils.Utils;
 import com.google.common.collect.Lists;
 import lombok.Getter;
 import org.bukkit.Bukkit;
@@ -40,10 +44,18 @@ public class HeroicScoreboard extends JavaPlugin
     public void onEnable()
     {
         final File config = new File( getDataFolder(), "config.yml" );
+        final File scoreboards = new File( getDataFolder(), "scoreboards" );
 
         if ( !config.exists() )
         {
             IConfiguration.createDefaultFile( getResource( "config.yml" ), config );
+        }
+
+        if ( !scoreboards.exists() )
+        {
+            scoreboards.mkdir();
+            IConfiguration.createDefaultFile( getResource( "scoreboards/default.yml" ), new File( scoreboards, "default.yml" ) );
+            IConfiguration.createDefaultFile( getResource( "scoreboards/management.yml" ), new File( scoreboards, "management.yml" ) );
         }
 
         this.configuration = IConfiguration.loadYamlConfiguration( config );
@@ -52,6 +64,8 @@ public class HeroicScoreboard extends JavaPlugin
         final PaperCommandManager commandManager = new PaperCommandManager( this );
         commandManager.enableUnstableAPI( "help" );
         commandManager.registerCommand( new HeroicScoreboardCommand() );
+
+        PlaceHolder.registerPlaceHolder( new ScrollerPlaceHolder() );
 
         load( false );
     }
@@ -72,24 +86,38 @@ public class HeroicScoreboard extends JavaPlugin
             e.printStackTrace();
         }
         scoreboardConfigurations.clear();
-        for ( ISection section : configuration.getSectionList( "scoreboards" ) )
+        final File folder = new File( getDataFolder(), "scoreboards" );
+
+        for ( File file : folder.listFiles() )
         {
-            final String condition = section.getString( "condition" );
+            final IConfiguration config = IConfiguration.loadYamlConfiguration( file );
+            final boolean enabled = config.getBoolean( "enabled" );
+
+            if ( !enabled )
+            {
+                continue;
+            }
+            final String permission = config.getString( "permission" );
+            final String checkScript = config.getString( "check_script" );
+            final int weight = config.getInteger( "weight" );
+            final ScoreboardMode mode = Utils.valueOfOr( config.getString( "mode" ), ScoreboardMode.SCOREBOARD_MAX_32 );
+            final int interval = config.getInteger( "interval" );
+
             final ScoreboardTitle title = new ScoreboardTitle(
-                    section.getInteger( "title.interval" ),
-                    Collections.synchronizedList( section.getStringList( "title.frames" ) )
+                    config.getInteger( "title.interval" ),
+                    Collections.synchronizedList( config.getStringList( "title.frames" ) )
             );
             final List<ScoreboardLine> lines = Lists.newArrayList();
-
-            for ( ISection line : section.getSectionList( "lines" ) )
+            for ( ISection line : config.getSectionList( "lines" ) )
             {
                 lines.add( new ScoreboardLine(
                         line.getInteger( "interval" ),
                         Collections.synchronizedList( line.getStringList( "frames" ) )
                 ) );
             }
-
-            scoreboardConfigurations.add( new ScoreboardConfiguration( condition, title, lines ) );
+            scoreboardConfigurations.add( new ScoreboardConfiguration(
+                    permission, checkScript, weight, mode, interval, title, lines
+            ) );
         }
 
         if ( reload )

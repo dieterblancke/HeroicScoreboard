@@ -4,27 +4,35 @@ import com.dbsoftwares.spigot.scoreboard.packetwrappers.WrapperPlayServerScorebo
 import com.dbsoftwares.spigot.scoreboard.utils.PacketUtils;
 import com.dbsoftwares.spigot.scoreboard.utils.ScoreboardUtils;
 import com.dbsoftwares.spigot.scoreboard.utils.ServerVersion;
+import org.bukkit.ChatColor;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class VirtualTeam
 {
 
+    private static final String[] COLOR_LIST = { "§0§r", "§1§r", "§2§r", "§3§r", "§4§r",
+            "§5§r", "§6§r", "§7§r", "§8§r", "§9§r", "§a§r", "§b§r", "§c§r", "§d§r", "§e§r", "§f§r" };
+
+    private final boolean oldScoreboard;
+    private final ScoreboardMode mode;
     private final int line;
     private final ServerVersion version;
     private final String name;
+    public boolean playerChanged = false;
     private String prefix;
     private String suffix;
     private String currentPlayer;
     private String oldPlayer;
-
-    private boolean prefixChanged, suffixChanged, playerChanged = false;
+    private boolean prefixChanged;
+    private boolean suffixChanged;
     private boolean first = true;
 
-    private VirtualTeam( final int line, final ServerVersion version, final String name, final String prefix, final String suffix )
+    private VirtualTeam( final boolean oldScoreboard, final ScoreboardMode mode, final int line, final ServerVersion version, final String name, final String prefix, final String suffix )
     {
+        this.oldScoreboard = oldScoreboard;
+        this.mode = mode;
         this.line = line;
         this.version = version;
         this.name = name;
@@ -32,9 +40,9 @@ public class VirtualTeam
         this.suffix = suffix;
     }
 
-    public VirtualTeam( final int line, final ServerVersion version, final String name )
+    public VirtualTeam( final boolean oldScoreboard, final ScoreboardMode mode, final int line, final ServerVersion version, final String name )
     {
-        this( line, version, name, "", "" );
+        this( oldScoreboard, mode, line, version, name, "", "" );
     }
 
     public String getName()
@@ -73,17 +81,28 @@ public class VirtualTeam
     private WrapperPlayServerScoreboardTeam createPacket( int mode )
     {
         boolean newChat = version.isNewerThan( ServerVersion.MINECRAFT_1_13 );
+        ChatColor lastColor = ChatColor.WHITE;
+
+        for ( int i = 0; i < prefix.length(); i++ )
+        {
+            final char c = prefix.charAt( i );
+
+            if ( c == ChatColor.COLOR_CHAR && i + 1 < prefix.length() )
+            {
+                lastColor = ChatColor.getByChar( prefix.charAt( i + 1 ) );
+            }
+        }
 
         return PacketUtils.createTeamPacket(
                 name,
                 (byte) mode,
-                /* newChat ? ComponentSerializer.toString( TextComponent.fromLegacyText( name ) ) : */ name,
+                name,
                 (byte) 0,
                 "never",
                 "always",
-                0,
-                /* newChat ? ComponentSerializer.toString( TextComponent.fromLegacyText( prefix ) ) : */ prefix,
-                /* newChat ? ComponentSerializer.toString( TextComponent.fromLegacyText( suffix ) ) : */ suffix,
+                lastColor.ordinal(),
+                prefix,
+                suffix,
                 new String[0]
         );
     }
@@ -136,11 +155,16 @@ public class VirtualTeam
                 packets.add( addOrRemovePlayer( 4, oldPlayer ) );
             }
             packets.add( changePlayer() );
-        }
 
-        if ( first )
-        {
-            first = false;
+            if ( first )
+            {
+                first = false;
+            }
+
+            if ( playerChanged )
+            {
+                playerChanged = false;
+            }
         }
 
         return packets;
@@ -176,7 +200,27 @@ public class VirtualTeam
 
     public void setValue( String value )
     {
-        final String[] splitten = ScoreboardUtils.splitString( line, value, version );
+        final String[] splitten = ScoreboardUtils.splitString( oldScoreboard, mode, value, version );
+
+        if ( splitten[1].isEmpty() )
+        {
+            splitten[1] = COLOR_LIST[line];
+        }
+
+        if ( splitten[0] == null )
+        {
+            splitten[0] = "";
+        }
+
+        if ( splitten[1] == null )
+        {
+            splitten[1] = "";
+        }
+
+        if ( splitten[2] == null )
+        {
+            splitten[2] = "";
+        }
 
         setPrefix( splitten[0] );
         setPlayer( splitten[1] );

@@ -42,7 +42,7 @@ public class PlayerListener implements Listener
 
     private void handleDisconnect( final Player player )
     {
-        Scoreboard scoreboard = HeroicScoreboard.getInstance().getScoreboard( player );
+        final Scoreboard scoreboard = HeroicScoreboard.getInstance().getScoreboard( player );
 
         if ( scoreboard != null )
         {

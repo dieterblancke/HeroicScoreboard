@@ -25,7 +25,7 @@ public class Utils
         }
         if ( Bukkit.getPluginManager().isPluginEnabled( "CentrixCore" ) )
         {
-            final com.dbsoftwares.ccoreapi.user.User user = com.dbsoftwares.ccoreapi.CCore.getApi().getUser( player.getName() ).orElse( null );
+            final com.dbsoftwares.ccoreapi.user.User user = com.dbsoftwares.ccoreapi.CCore.a().getUser( player.getName() );
 
             message = com.dbsoftwares.ccoreapi.placeholders.PlaceHolderAPI.formatMessage( user, message );
         }
